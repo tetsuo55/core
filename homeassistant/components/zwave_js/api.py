@@ -1666,7 +1666,6 @@ async def websocket_migrate_zwave(
 ) -> None:
     """Migrate Z-Wave device and entity data to Z-Wave JS integration."""
     if "zwave" not in hass.config.components:
-        LOGGER.error("Can not migrate, zwave integration is not loaded")
         connection.send_message(
             websocket_api.error_message(
                 msg["id"], "zwave_not_loaded", "Integration zwave is not loaded"
