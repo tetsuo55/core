@@ -145,7 +145,9 @@ def _async_validate_usage_stat(
         state_class == sensor.STATE_CLASS_MEASUREMENT
         and sensor.ATTR_LAST_RESET not in state.attributes
     ):
-        result.append(ValidationIssue("entity_measurement_no_last_reset", stat_value))
+        result.append(
+            ValidationIssue("entity_state_class_measurement_no_last_reset", stat_value)
+        )
 
 
 @callback
@@ -239,7 +241,9 @@ def _async_validate_cost_entity(
         state_class == sensor.STATE_CLASS_MEASUREMENT
         and sensor.ATTR_LAST_RESET not in state.attributes
     ):
-        result.append(ValidationIssue("entity_measurement_no_last_reset", entity_id))
+        result.append(
+            ValidationIssue("entity_state_class_measurement_no_last_reset", entity_id)
+        )
 
 
 async def async_validate(hass: HomeAssistant) -> EnergyPreferencesValidation:
