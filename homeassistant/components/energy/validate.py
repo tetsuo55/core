@@ -142,7 +142,7 @@ def _async_validate_usage_stat(
         )
 
     if (
-        state_class == sensor.STATE_CLASS_TOTAL_INCREASING
+        state_class == sensor.STATE_CLASS_MEASUREMENT
         and sensor.ATTR_LAST_RESET not in state.attributes
     ):
         result.append(ValidationIssue("entity_measurement_no_last_reset", stat_value))
@@ -236,7 +236,7 @@ def _async_validate_cost_entity(
         )
 
     if (
-        state_class == sensor.STATE_CLASS_TOTAL_INCREASING
+        state_class == sensor.STATE_CLASS_MEASUREMENT
         and sensor.ATTR_LAST_RESET not in state.attributes
     ):
         result.append(ValidationIssue("entity_measurement_no_last_reset", entity_id))
