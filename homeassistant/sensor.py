@@ -6,7 +6,6 @@ import voluptuous as vol
 
 from homeassistant import util
 from homeassistant.components.sensor import (
-    DEVICE_CLASSES_SCHEMA,
     ENTITY_ID_FORMAT,
     PLATFORM_SCHEMA,
 )
@@ -24,7 +23,6 @@ from homeassistant.const import (
     TEMP_CELSIUS,
     TEMP_FAHRENHEIT,
 )
-from homeassistant.core import callback
 from homeassistant.exceptions import TemplateError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity, async_generate_entity_id
@@ -70,11 +68,31 @@ SENSOR_TYPES = {
         "Absolute Humidity",
         CONCENTRATION_GRAMS_PER_CUBIC_METER,
     ],
-    "heatindex": [DEVICE_CLASS_TEMPERATURE, "Heat Index", TEMP_CELSIUS],
-    "dewpoint": [DEVICE_CLASS_TEMPERATURE, "Dew Point", TEMP_CELSIUS],
-    "perception": [None, "Thermal Perception", None],
-    "simmerindex": [DEVICE_CLASS_TEMPERATURE, "Simmer Index", TEMP_CELSIUS],
-    "simmerzone": [None, "Simmer Zone", None],
+    "heatindex": [
+        DEVICE_CLASS_TEMPERATURE,
+        "Heat Index",
+        TEMP_CELSIUS
+    ],
+    "dewpoint": [
+        DEVICE_CLASS_TEMPERATURE,
+        "Dew Point",
+        TEMP_CELSIUS
+    ],
+    "perception": [
+        None,
+        "Thermal Perception",
+        None
+    ],
+    "simmerindex": [
+        DEVICE_CLASS_TEMPERATURE,
+        "Simmer Index",
+        TEMP_CELSIUS
+    ],
+    "simmerzone": [
+        None,
+        "Simmer Zone",
+        None
+    ],
 }
 
 
@@ -126,7 +144,7 @@ class SensorThermalComfort(Entity):
         entity_picture_template,
         sensor_type,
     ):
-        """Initialize the sensor."""
+        # Initialize the sensor.
         self.hass = hass
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, f"{device_id}_{sensor_type}", hass=hass
@@ -159,7 +177,7 @@ class SensorThermalComfort(Entity):
             STATE_UNKNOWN,
             STATE_UNAVAILABLE,
         ):
-            self._temperature = self.temperature_state_as_celcius(temperature_state)
+            self._temperature = temperature_state_as_celcius(temperature_state)
 
         humidity_state = hass.states.get(humidity_entity)
         if humidity_state and humidity_state.state not in (
@@ -171,7 +189,7 @@ class SensorThermalComfort(Entity):
     def temperature_state_listener(self, entity, old_state, new_state):
         """Handle temperature device state changes."""
         if new_state and new_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-            self._temperature = self.temperature_state_as_celcius(new_state)
+            self._temperature = temperature_state_as_celcius(new_state)
 
         self.async_schedule_update_ha_state(True)
 
@@ -182,117 +200,117 @@ class SensorThermalComfort(Entity):
 
         self.async_schedule_update_ha_state(True)
 
-    def temperature_state_as_celcius(self, temperature_state):
+    def temperature_state_as_celcius(temperature_state):
         unit = temperature_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
         temp = util.convert(temperature_state.state, float)
         if unit == TEMP_FAHRENHEIT:
             temp = util.temperature.fahrenheit_to_celsius(temp)
         return temp
 
-    def computeDewPoint(self, temperature, humidity):
+    def compute_dew_point(temperature, humidity):
         """http://wahiduddin.net/calc/density_algorithms.htm"""
-        A0 = 373.15 / (273.15 + temperature)
-        SUM = -7.90298 * (A0 - 1)
-        SUM += 5.02808 * math.log(A0, 10)
-        SUM += -1.3816e-7 * (pow(10, (11.344 * (1 - 1 / A0))) - 1)
-        SUM += 8.1328e-3 * (pow(10, (-3.49149 * (A0 - 1))) - 1)
-        SUM += math.log(1013.246, 10)
-        VP = pow(10, SUM - 3) * humidity
-        Td = math.log(VP / 0.61078)
-        Td = (241.88 * Td) / (17.558 - Td)
-        return round(Td, 2)
+        a0 = 373.15 / (273.15 + temperature)
+        sum = -7.90298 * (a0 - 1)
+        sum += 5.02808 * math.log(a0, 10)
+        sum += -1.3816e-7 * (pow(10, (11.344 * (1 - 1 / a0))) - 1)
+        sum += 8.1328e-3 * (pow(10, (-3.49149 * (a0 - 1))) - 1)
+        sum += math.log(1013.246, 10)
+        vp = pow(10, sum - 3) * humidity
+        td = math.log(vp / 0.61078)
+        td = (241.88 * td) / (17.558 - td)
+        return round(td, 2)
 
-    def computeHeatIndex(self, temperature, humidity):
+    def compute_heat_index(temperature, humidity):
         """http://www.wpc.ncep.noaa.gov/html/heatindex_equation.shtml"""
         fahrenheit = util.temperature.celsius_to_fahrenheit(temperature)
-        hi = 0.5 * (
+        heat_index = 0.5 * (
             fahrenheit + 61.0 + ((fahrenheit - 68.0) * 1.2) + (humidity * 0.094)
         )
 
-        if hi > 79:
-            hi = -42.379 + 2.04901523 * fahrenheit
-            hi = hi + 10.14333127 * humidity
-            hi = hi + -0.22475541 * fahrenheit * humidity
-            hi = hi + -0.00683783 * pow(fahrenheit, 2)
-            hi = hi + -0.05481717 * pow(humidity, 2)
-            hi = hi + 0.00122874 * pow(fahrenheit, 2) * humidity
-            hi = hi + 0.00085282 * fahrenheit * pow(humidity, 2)
-            hi = hi + -0.00000199 * pow(fahrenheit, 2) * pow(humidity, 2)
+        if heat_index > 79:
+            heat_index = -42.379 + 2.04901523 * fahrenheit
+            heat_index += 10.14333127 * humidity
+            heat_index += -0.22475541 * fahrenheit * humidity
+            heat_index += -0.00683783 * pow(fahrenheit, 2)
+            heat_index += -0.05481717 * pow(humidity, 2)
+            heat_index += 0.00122874 * pow(fahrenheit, 2) * humidity
+            heat_index += 0.00085282 * fahrenheit * pow(humidity, 2)
+            heat_index += -0.00000199 * pow(fahrenheit, 2) * pow(humidity, 2)
 
         if humidity < 13 and fahrenheit >= 80 and fahrenheit <= 112:
-            hi = hi - ((13 - humidity) * 0.25) * math.sqrt(
+            heat_index = heat_index - ((13 - humidity) * 0.25) * math.sqrt(
                 (17 - abs(fahrenheit - 95)) * 0.05882
             )
         elif humidity > 85 and fahrenheit >= 80 and fahrenheit <= 87:
-            hi = hi + ((humidity - 85) * 0.1) * ((87 - fahrenheit) * 0.2)
+            heat_index += ((humidity - 85) * 0.1) * ((87 - fahrenheit) * 0.2)
 
-        return round(util.temperature.fahrenheit_to_celsius(hi), 2)
+        return round(util.temperature.fahrenheit_to_celsius(heat_index), 2)
 
-    def computePerception(self, temperature, humidity):
+    def compute_perception(temperature, humidity):
         """https://en.wikipedia.org/wiki/Dew_point"""
-        dewPoint = self.computeDewPoint(temperature, humidity)
-        if dewPoint < 10:
+        dew_point = compute_dew_point(temperature, humidity)
+        if dew_point < 10:
             return "A bit dry for some"
-        elif dewPoint < 13:
+        if dew_point < 13:
             return "Very comfortable"
-        elif dewPoint < 16:
+        if dew_point < 16:
             return "Comfortable"
-        elif dewPoint < 18:
+        if dew_point < 18:
             return "OK for most"
-        elif dewPoint < 21:
+        if dew_point < 21:
             return "Somewhat uncomfortable"
-        elif dewPoint < 24:
+        if dew_point < 24:
             return "Very humid, quite uncomfortable"
-        elif dewPoint < 26:
+        if dew_point < 26:
             return "Extremely uncomfortable"
         return "Severely high"
 
-    def computeAbsoluteHumidity(self, temperature, humidity):
+    def compute_absolute_humidity(temperature, humidity):
         """https://carnotcycle.wordpress.com/2012/08/04/how-to-convert-relative-humidity-to-absolute-humidity/"""
-        absTemperature = temperature + 273.15
-        absHumidity = 6.112
-        absHumidity *= math.exp((17.67 * temperature) / (243.5 + temperature))
-        absHumidity *= humidity
-        absHumidity *= 2.1674
-        absHumidity /= absTemperature
-        return round(absHumidity, 2)
+        abs_temperature = temperature + 273.15
+        abs_humidity = 6.112
+        abs_humidity *= math.exp((17.67 * temperature) / (243.5 + temperature))
+        abs_humidity *= humidity
+        abs_humidity *= 2.1674
+        abs_humidity /= abs_temperature
+        return round(abs_humidity, 2)
 
-    def computeSimmerIndex(self, temperature, humidity):
+    def compute_simmer_index(temperature, humidity):
         """https://www.vcalc.com/wiki/rklarsen/Summer+Simmer+Index"""
         fahrenheit = util.temperature.celsius_to_fahrenheit(temperature)
 
         if fahrenheit < 70:
-            ssi = fahrenheit
+            simmer_index = fahrenheit
         else:
-            ssi = (
+            simmer_index = (
                 1.98 * (fahrenheit - (0.55 - (0.0055 * humidity)) * (fahrenheit - 58.0))
                 - 56.83
             )
 
-        return round(util.temperature.fahrenheit_to_celsius(ssi), 2)
+        return round(util.temperature.fahrenheit_to_celsius(simmer_index), 2)
 
-    def computeSimmerZone(self, temperature, humidity):
+    def compute_simmer_zone(temperature, humidity):
         """https://www.vcalc.com/wiki/rklarsen/Summer+Simmer+Index"""
-        ssi = self.computeSimmerIndex(temperature, humidity)
-        if ssi < 21.1:
+        simmer_index = compute_simmer_index(temperature, humidity)
+        if simmer_index < 21.1:
             return ""
-        if ssi < 25.0:
+        if simmer_index < 25.0:
             return "Slightly cool"
-        if ssi < 28.3:
+        if simmer_index < 28.3:
             return "Comfortable"
-        if ssi < 32.8:
+        if simmer_index < 32.8:
             return "Slightly warm"
-        if ssi < 37.8:
+        if simmer_index < 37.8:
             return "Increasing discomfort"
-        if ssi < 44.4:
+        if simmer_index < 44.4:
             return "Extremely warm"
-        if ssi < 51.7:
+        if simmer_index < 51.7:
             return "Danger of heatstroke"
-        if ssi < 65.6:
+        if simmer_index < 65.6:
             return "Extreme danger of heatstroke"
         return "Circulatory collapse imminent"
 
-    """Sensor Properties"""
+    # Sensor Properties
 
     @property
     def name(self):
@@ -339,19 +357,17 @@ class SensorThermalComfort(Entity):
         value = None
         if self._temperature and self._humidity:
             if self._sensor_type == "dewpoint":
-                value = self.computeDewPoint(self._temperature, self._humidity)
+                value = compute_dew_point(self._temperature, self._humidity)
             elif self._sensor_type == "heatindex":
-                value = self.computeHeatIndex(self._temperature, self._humidity)
+                value = compute_heat_index(self._temperature, self._humidity)
             elif self._sensor_type == "perception":
-                value = self.computePerception(self._temperature, self._humidity)
+                value = compute_perception(self._temperature, self._humidity)
             elif self._sensor_type == "absolutehumidity":
-                value = self.computeAbsoluteHumidity(self._temperature, self._humidity)
+                value = compute_absolute_humidity(self._temperature, self._humidity)
             elif self._sensor_type == "simmerindex":
-                value = self.computeSimmerIndex(self._temperature, self._humidity)
+                value = compute_simmer_index(self._temperature, self._humidity)
             elif self._sensor_type == "simmerzone":
-                value = self.computeSimmerZone(self._temperature, self._humidity)
-            elif self._sensor_type == "comfortratio":
-                value = "comfortratio"
+                value = compute_simmer_zone(self._temperature, self._humidity)
 
         self._state = value
         self._device_state_attributes[ATTR_TEMPERATURE] = self._temperature
@@ -373,7 +389,7 @@ class SensorThermalComfort(Entity):
                 ):
                     # Common during HA startup - so just a warning
                     _LOGGER.warning(
-                        "Could not render %s template %s," " the state is unknown.",
+                        "Could not render %s template %s," " the state is unknown",
                         friendly_property_name,
                         self._name,
                     )
