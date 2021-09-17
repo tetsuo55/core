@@ -1,14 +1,14 @@
 import logging
+import math
 from typing import Optional
 
 import voluptuous as vol
 
 from homeassistant import util
-from homeassistant.core import callback
 from homeassistant.components.sensor import (
+    DEVICE_CLASSES_SCHEMA,
     ENTITY_ID_FORMAT,
     PLATFORM_SCHEMA,
-    DEVICE_CLASSES_SCHEMA,
 )
 from homeassistant.const import (
     ATTR_FRIENDLY_NAME,
@@ -24,12 +24,11 @@ from homeassistant.const import (
     TEMP_CELSIUS,
     TEMP_FAHRENHEIT,
 )
+from homeassistant.core import callback
 from homeassistant.exceptions import TemplateError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity, async_generate_entity_id
 from homeassistant.helpers.event import async_track_state_change
-
-import math
 
 _LOGGER = logging.getLogger(__name__)
 
