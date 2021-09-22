@@ -3,27 +3,27 @@ import logging
 import math
 from typing import Optional
 
-import homeassistant.helpers.config_validation as cv
-import voluptuous as vol
 from homeassistant import util
-from homeassistant.components.sensor import ENTITY_ID_FORMAT
-from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.const import ATTR_FRIENDLY_NAME
-from homeassistant.const import ATTR_TEMPERATURE
-from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
-from homeassistant.const import CONF_ENTITY_PICTURE_TEMPLATE
-from homeassistant.const import CONF_ICON_TEMPLATE
-from homeassistant.const import CONF_SENSORS
-from homeassistant.const import DEVICE_CLASS_HUMIDITY
-from homeassistant.const import DEVICE_CLASS_TEMPERATURE
-from homeassistant.const import STATE_UNAVAILABLE
-from homeassistant.const import STATE_UNKNOWN
-from homeassistant.const import TEMP_CELSIUS
-from homeassistant.const import TEMP_FAHRENHEIT
+from homeassistant.components.sensor import ENTITY_ID_FORMAT, PLATFORM_SCHEMA
+from homeassistant.const import (
+    ATTR_FRIENDLY_NAME,
+    ATTR_TEMPERATURE,
+    ATTR_UNIT_OF_MEASUREMENT,
+    CONF_ENTITY_PICTURE_TEMPLATE,
+    CONF_ICON_TEMPLATE,
+    CONF_SENSORS,
+    DEVICE_CLASS_HUMIDITY,
+    DEVICE_CLASS_TEMPERATURE,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
+    TEMP_CELSIUS,
+    TEMP_FAHRENHEIT,
+)
 from homeassistant.exceptions import TemplateError
-from homeassistant.helpers.entity import async_generate_entity_id
-from homeassistant.helpers.entity import Entity
+import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.entity import Entity, async_generate_entity_id
 from homeassistant.helpers.event import async_track_state_change
+import voluptuous as vol
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -121,7 +121,7 @@ class SensorThermalComfort(Entity):
         entity_picture_template,
         sensor_type,
     ):
-        # Initialize the sensor.
+        """Initialize thermal comfort sensor."""
         self.hass = hass
         self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT, f"{device_id}_{sensor_type}", hass=hass
@@ -189,6 +189,7 @@ class SensorThermalComfort(Entity):
 
     @staticmethod
     def temperature_state_as_celcius(temperature_state):
+        """Convert temperature to celsius."""
         unit = temperature_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
         temp = util.convert(temperature_state.state, float)
         if unit == TEMP_FAHRENHEIT:
@@ -197,21 +198,30 @@ class SensorThermalComfort(Entity):
 
     @staticmethod
     def compute_dew_point(temperature, humidity):
-        """http://wahiduddin.net/calc/density_algorithms.htm"""
-        a0 = 373.15 / (273.15 + temperature)
-        sum = -7.90298 * (a0 - 1)
-        sum += 5.02808 * math.log(a0, 10)
-        sum += -1.3816e-7 * (pow(10, (11.344 * (1 - 1 / a0))) - 1)
-        sum += 8.1328e-3 * (pow(10, (-3.49149 * (a0 - 1))) - 1)
-        sum += math.log(1013.246, 10)
-        vp = pow(10, sum - 3) * humidity
-        td = math.log(vp / 0.61078)
-        td = (241.88 * td) / (17.558 - td)
-        return round(td, 2)
+        """Calculate the dew point."""
+
+        # https://en.wikipedia.org/wiki/Arden_Buck_equation
+        if temperature < 0:
+            saturation_vapor_pressure = 6.1115 * math.exp(
+                (23.036 - (temperature / 333.7))
+                * (temperature / (279.82 + temperature))
+            )
+        else:
+            saturation_vapor_pressure = 6.1121 * math.exp(
+                (18.678 - (temperature / 234.5))
+                * (temperature / (257.14 + temperature))
+            )
+        vapor_pressure = saturation_vapor_pressure * (humidity / 100.0)
+        dew_point = (-430.22 + 237.7 * math.log(vapor_pressure)) / (
+            -math.log(vapor_pressure) + 19.08
+        )
+        return round(dew_point, 2)
 
     @staticmethod
     def compute_heat_index(temperature, humidity):
-        """http://www.wpc.ncep.noaa.gov/html/heatindex_equation.shtml"""
+        """Calculate the heat index."""
+
+        # http://www.wpc.ncep.noaa.gov/html/heatindex_equation.shtml
         fahrenheit = util.temperature.celsius_to_fahrenheit(temperature)
         heat_index = 0.5 * (
             fahrenheit + 61.0 + ((fahrenheit - 68.0) * 1.2) + (humidity * 0.094)
@@ -238,7 +248,9 @@ class SensorThermalComfort(Entity):
 
     @staticmethod
     def compute_perception(temperature, humidity):
-        """https://en.wikipedia.org/wiki/Dew_point"""
+        """Calculate thermal perception value."""
+
+        # https://en.wikipedia.org/wiki/Dew_point
         dew_point = SensorThermalComfort.compute_dew_point(temperature, humidity)
         if dew_point < 10:
             return "A bit dry for some"
@@ -258,7 +270,9 @@ class SensorThermalComfort(Entity):
 
     @staticmethod
     def compute_absolute_humidity(temperature, humidity):
-        """https://carnotcycle.wordpress.com/2012/08/04/how-to-convert-relative-humidity-to-absolute-humidity/"""
+        """Calculate absolute humidity."""
+
+        # https://carnotcycle.wordpress.com/2012/08/04/how-to-convert-relative-humidity-to-absolute-humidity/
         abs_temperature = temperature + 273.15
         abs_humidity = 6.112
         abs_humidity *= math.exp((17.67 * temperature) / (243.5 + temperature))
@@ -269,7 +283,9 @@ class SensorThermalComfort(Entity):
 
     @staticmethod
     def compute_simmer_index(temperature, humidity):
-        """https://www.vcalc.com/wiki/rklarsen/Summer+Simmer+Index"""
+        """Calculate simmer index."""
+
+        # https://www.vcalc.com/wiki/rklarsen/Summer+Simmer+Index
         fahrenheit = util.temperature.celsius_to_fahrenheit(temperature)
 
         if fahrenheit < 70:
@@ -284,7 +300,9 @@ class SensorThermalComfort(Entity):
 
     @staticmethod
     def compute_simmer_zone(temperature, humidity):
-        """https://www.vcalc.com/wiki/rklarsen/Summer+Simmer+Index"""
+        """Calculate simmer zone."""
+
+        # https://www.vcalc.com/wiki/rklarsen/Summer+Simmer+Index
         simmer_index = SensorThermalComfort.compute_simmer_index(temperature, humidity)
         if simmer_index < 21.1:
             return ""
